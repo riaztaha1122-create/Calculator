@@ -8,7 +8,7 @@ const OPERATIONS = {
   divide: (a, b) => (b === 0 ? null : a / b),
 }
 
-const SYMBOLS = { add: '+', subtract: '−', multiply: '×', divide: '÷' }
+const SYMBOLS = { add: '+', subtract: '-', multiply: '*', divide: '/' }
 
 function Calculator() {
   const [display, setDisplay] = useState('0')
@@ -19,7 +19,7 @@ function Calculator() {
 
   const formatNumber = useCallback((num) => {
     const str = String(num)
-    if (str.length > 12) return Number(num).toExponential(6)
+    if (str.length > 10) return Number(num).toExponential(5)
     return str
   }, [])
 
@@ -54,10 +54,14 @@ function Calculator() {
   }, [])
 
   const toggleSign = useCallback(() => {
-    setDisplay((prev) =>
-      prev.startsWith('-') ? prev.slice(1) : '-' + prev
-    )
-  }, [])
+    setDisplay((prev) => {
+      if (prev === 'Error') return prev
+      const value = parseFloat(prev)
+      if (Number.isNaN(value)) return prev
+      const result = -value
+      return formatNumber(result)
+    })
+  }, [formatNumber])
 
   const inputPercent = useCallback(() => {
     const value = parseFloat(display)
@@ -132,17 +136,17 @@ function Calculator() {
 
   const buttons = [
     { id: 'clear', label: 'AC', className: 'func', action: clear },
-    { id: 'toggle', label: '±', className: 'func', action: toggleSign },
+    { id: 'toggle', label: '+/-', className: 'func', action: toggleSign },
     { id: 'percent', label: '%', className: 'func', action: inputPercent },
-    { id: 'divide', label: '÷', className: 'op', action: () => performOperation('divide') },
+    { id: 'divide', label: '/', className: 'op', action: () => performOperation('divide') },
     { id: '7', label: '7', action: () => inputDigit('7') },
     { id: '8', label: '8', action: () => inputDigit('8') },
     { id: '9', label: '9', action: () => inputDigit('9') },
-    { id: 'multiply', label: '×', className: 'op', action: () => performOperation('multiply') },
+    { id: 'multiply', label: '*', className: 'op', action: () => performOperation('multiply') },
     { id: '4', label: '4', action: () => inputDigit('4') },
     { id: '5', label: '5', action: () => inputDigit('5') },
     { id: '6', label: '6', action: () => inputDigit('6') },
-    { id: 'subtract', label: '−', className: 'op', action: () => performOperation('subtract') },
+    { id: 'subtract', label: '-', className: 'op', action: () => performOperation('subtract') },
     { id: '1', label: '1', action: () => inputDigit('1') },
     { id: '2', label: '2', action: () => inputDigit('2') },
     { id: '3', label: '3', action: () => inputDigit('3') },
@@ -151,6 +155,21 @@ function Calculator() {
     { id: 'decimal', label: '.', action: inputDecimal },
     { id: 'equals', label: '=', className: 'equals', action: calculate },
   ]
+
+  const getDisplayContent = () => {
+    if (display === 'Error') return display
+    const formatted = (() => {
+      const num = parseFloat(display)
+      return Number.isNaN(num) ? display : formatNumber(num)
+    })()
+    if (operation) {
+      const prev = formatNumber(previousValue)
+      return waitingForOperand
+        ? `${prev} ${SYMBOLS[operation]}`
+        : `${prev} ${SYMBOLS[operation]} ${formatted}`
+    }
+    return formatted
+  }
 
   return (
     <div className="calculator" role="application" aria-label="Calculator">
@@ -161,10 +180,7 @@ function Calculator() {
         aria-live="polite"
         aria-atomic="true"
       >
-        {operation && (
-          <span className="display-operation">{SYMBOLS[operation]}</span>
-        )}
-        <span className="display-value">{display}</span>
+        <span className="display-value">{getDisplayContent()}</span>
       </div>
       <div className="keypad">
         {buttons.map((btn) => (
